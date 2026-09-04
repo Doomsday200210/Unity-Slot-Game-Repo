@@ -11,13 +11,16 @@ public class ReelController : MonoBehaviour
 
     [Header("Stop")]
     [SerializeField] private float stopDuration = 1f;
+    [SerializeField] private int extraRotations = 2;
 
     private RectTransform[] symbols;
     private SymbolView[] symbolViews;
 
     private bool isSpinning;
 
-    private const float TopPosition = 96f;
+    public bool IsSpinning => isSpinning;
+
+    private const float SymbolSpacing = 96f;
     private const float ReelHeight = 768f;
 
     private void Awake()
@@ -41,32 +44,16 @@ public class ReelController : MonoBehaviour
         }
     }
 
-    public void StartSpin()
+    public IEnumerator SpinToResult(SymbolType targetSymbol)
     {
         if (isSpinning)
-            return;
+            yield break;
 
-        SymbolType result = GenerateRandomResult();
-
-        Debug.Log("RNG Result: " + result);
-
-        StartCoroutine(SpinRoutine(result));
-    }
-
-    private SymbolType GenerateRandomResult()
-    {
-        int randomIndex = Random.Range(0, 4);
-
-        return (SymbolType)randomIndex;
-    }
-
-    private IEnumerator SpinRoutine(SymbolType target)
-    {
         isSpinning = true;
 
-        // -------------------------
-        // SPIN
-        // -------------------------
+        // ==========================================
+        // 1. NORMAL SPIN
+        // ==========================================
 
         float elapsed = 0f;
 
@@ -74,55 +61,106 @@ public class ReelController : MonoBehaviour
         {
             elapsed += Time.deltaTime;
 
-            MoveSymbols(spinSpeed);
+            MoveSymbols(spinSpeed * Time.deltaTime);
 
             yield return null;
         }
 
-        // -------------------------
-        // FIND TARGET
-        // -------------------------
+        // ==========================================
+        // 2. FIND TARGET
+        // ==========================================
 
-        RectTransform targetSymbol = FindTarget(target);
+        RectTransform target = FindTarget(targetSymbol);
 
-        if (targetSymbol != null)
+        if (target != null)
         {
+            // Calculate how far the target needs to travel
+            // to reach the middle.
+            float currentY = target.anchoredPosition.y;
+
+            float distanceToCenter;
+
+            if (currentY <= 0f)
+            {
+                distanceToCenter = -currentY;
+            }
+            else
+            {
+                distanceToCenter = ReelHeight - currentY;
+            }
+
+            float totalDistance =
+                distanceToCenter +
+                (ReelHeight * extraRotations);
+
+            // ==========================================
+            // 3. SMOOTH STOP
+            // ==========================================
+
             yield return StartCoroutine(
-                MoveToCenter(targetSymbol)
+                SmoothStop(totalDistance)
             );
+
+            // ==========================================
+            // 4. FORCE TARGET TO EXACT CENTER
+            // ==========================================
+
+            float correction =
+                -target.anchoredPosition.y;
+
+            MoveAllSymbols(correction);
+
+            // ==========================================
+            // 5. FORCE ENTIRE REEL INTO GRID
+            // ==========================================
+
+            ArrangeReel(target);
         }
 
         isSpinning = false;
 
-        Debug.Log("Reel stopped on: " + target);
+        Debug.Log("Reel stopped on: " + targetSymbol);
     }
 
-    private void MoveSymbols(float speed)
-    {
-        float movement =
-            speed * Time.deltaTime;
+    // ==================================================
+    // NORMAL SPIN
+    // ==================================================
 
+    private void MoveSymbols(float movement)
+    {
         foreach (RectTransform symbol in symbols)
         {
-            Vector2 position =
-                symbol.anchoredPosition;
+            Vector2 position = symbol.anchoredPosition;
 
             position.y += movement;
 
-            if (position.y >= TopPosition)
+            // Proper wrapping
+            while (position.y >= SymbolSpacing)
             {
                 position.y -= ReelHeight;
+            }
+
+            while (position.y < -672f)
+            {
+                position.y += ReelHeight;
             }
 
             symbol.anchoredPosition = position;
         }
     }
 
-    private RectTransform FindTarget(SymbolType target)
+    // ==================================================
+    // FIND TARGET
+    // ==================================================
+
+    private RectTransform FindTarget(SymbolType targetSymbol)
     {
         foreach (SymbolView symbolView in symbolViews)
         {
-            if (symbolView.Type == target)
+            if (symbolView == null)
+                continue;
+
+            if (symbolView.Type == targetSymbol)
             {
                 return symbolView.GetComponent<RectTransform>();
             }
@@ -131,76 +169,144 @@ public class ReelController : MonoBehaviour
         return null;
     }
 
-    private IEnumerator MoveToCenter(
-        RectTransform targetSymbol)
-    {
-        float startOffset =
-            -targetSymbol.anchoredPosition.y;
+    // ==================================================
+    // SMOOTH STOP
+    // ==================================================
 
+    private IEnumerator SmoothStop(float totalDistance)
+    {
         float elapsed = 0f;
+        float previousDistance = 0f;
 
         while (elapsed < stopDuration)
         {
             elapsed += Time.deltaTime;
 
-            float t =
-                Mathf.Clamp01(
-                    elapsed / stopDuration
-                );
+            float t = Mathf.Clamp01(
+                elapsed / stopDuration
+            );
 
-            // Smooth deceleration.
-            float smoothT =
-                Mathf.SmoothStep(0f, 1f, t);
+            // Ease out
+            float smoothT = Mathf.SmoothStep(
+                0f,
+                1f,
+                t
+            );
 
-            float currentOffset =
-                Mathf.Lerp(
-                    0f,
-                    startOffset,
-                    smoothT
-                );
-
-            float previousT =
-                Mathf.Clamp01(
-                    (elapsed - Time.deltaTime)
-                    / stopDuration
-                );
-
-            float previousSmoothT =
-                Mathf.SmoothStep(
-                    0f,
-                    1f,
-                    previousT
-                );
+            float currentDistance =
+                totalDistance * smoothT;
 
             float movement =
-                currentOffset -
-                Mathf.Lerp(
-                    0f,
-                    startOffset,
-                    previousSmoothT
-                );
+                currentDistance - previousDistance;
 
             MoveAllSymbols(movement);
+
+            previousDistance = currentDistance;
 
             yield return null;
         }
 
-        // Make absolutely sure the target
-        // is exactly in the center.
-        float finalOffset =
-            -targetSymbol.anchoredPosition.y;
+        // Finish remaining distance
+        float remaining =
+            totalDistance - previousDistance;
 
-        MoveAllSymbols(finalOffset);
+        if (Mathf.Abs(remaining) > 0.001f)
+        {
+            MoveAllSymbols(remaining);
+        }
     }
+
+    // ==================================================
+    // ARRANGE COMPLETE REEL
+    // ==================================================
+
+    private void ArrangeReel(RectTransform target)
+    {
+        // Find the target's index
+        int targetIndex = -1;
+
+        for (int i = 0; i < symbols.Length; i++)
+        {
+            if (symbols[i] == target)
+            {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex == -1)
+            return;
+
+        /*
+         * Force the target to the exact middle.
+         *
+         * Example:
+         *
+         *        Symbol above
+         *             +96
+         *
+         *        TARGET
+         *              0
+         *
+         *        Symbol below
+         *             -96
+         */
+
+        for (int i = 0; i < symbols.Length; i++)
+        {
+            int relativeIndex = i - targetIndex;
+
+            float newY =
+                -relativeIndex * SymbolSpacing;
+
+            // Keep the reel inside the 768px loop
+            while (newY >= SymbolSpacing)
+            {
+                newY -= ReelHeight;
+            }
+
+            while (newY < -672f)
+            {
+                newY += ReelHeight;
+            }
+
+            symbols[i].anchoredPosition =
+                new Vector2(
+                    symbols[i].anchoredPosition.x,
+                    newY
+                );
+        }
+
+        // Final guarantee:
+        // target is exactly in the middle.
+        target.anchoredPosition =
+            new Vector2(
+                target.anchoredPosition.x,
+                0f
+            );
+    }
+
+    // ==================================================
+    // MOVE EVERYTHING
+    // ==================================================
 
     private void MoveAllSymbols(float movement)
     {
         foreach (RectTransform symbol in symbols)
         {
-            Vector2 position =
-                symbol.anchoredPosition;
+            Vector2 position = symbol.anchoredPosition;
 
             position.y += movement;
+
+            while (position.y >= SymbolSpacing)
+            {
+                position.y -= ReelHeight;
+            }
+
+            while (position.y < -672f)
+            {
+                position.y += ReelHeight;
+            }
 
             symbol.anchoredPosition = position;
         }
