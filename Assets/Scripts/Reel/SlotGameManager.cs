@@ -57,6 +57,7 @@ public class SlotGameManager : MonoBehaviour
         {
             resultText.text = "NOT ENOUGH COINS!";
             payoutText.text = "";
+
             return;
         }
 
@@ -66,6 +67,7 @@ public class SlotGameManager : MonoBehaviour
     private IEnumerator SpinAllReels()
     {
         isSpinning = true;
+
         spinButton.interactable = false;
 
         // Stop previous win effects
@@ -125,13 +127,14 @@ public class SlotGameManager : MonoBehaviour
         UpdateUI();
 
         isSpinning = false;
+
         spinButton.interactable = true;
     }
 
     private void CheckResult()
     {
         // ==========================================
-        // JACKPOT - ALL THREE MATCH
+        // JACKPOT
         // ==========================================
 
         if (
@@ -144,10 +147,11 @@ public class SlotGameManager : MonoBehaviour
             coins += payout;
 
             resultText.text = "JACKPOT!";
+
             payoutText.text =
                 "+" + payout + " COINS";
 
-            // Play winning animation
+            // Win animation
             reel1.PlayWinEffect();
             reel2.PlayWinEffect();
             reel3.PlayWinEffect();
@@ -160,7 +164,7 @@ public class SlotGameManager : MonoBehaviour
         }
 
         // ==========================================
-        // SMALL WIN - TWO MATCH
+        // SMALL WIN
         // ==========================================
 
         if (
@@ -174,10 +178,13 @@ public class SlotGameManager : MonoBehaviour
             coins += payout;
 
             resultText.text = "SMALL WIN!";
+
             payoutText.text =
                 "+" + payout + " COINS";
 
-            Debug.Log("SMALL WIN! +10 coins");
+            Debug.Log(
+                "SMALL WIN! +10 coins"
+            );
 
             return;
         }
@@ -187,10 +194,13 @@ public class SlotGameManager : MonoBehaviour
         // ==========================================
 
         resultText.text = "TRY AGAIN!";
+
         payoutText.text = "0 COINS";
 
         Debug.Log(
-            $"TRY AGAIN: {result1} | {result2} | {result3}"
+            $"TRY AGAIN: {result1} | " +
+            $"{result2} | " +
+            $"{result3}"
         );
     }
 
@@ -217,6 +227,7 @@ public class SlotGameManager : MonoBehaviour
 
     private void UpdateUI()
     {
-        balanceText.text = "COINS: " + coins;
+        balanceText.text =
+            "COINS: " + coins;
     }
 }

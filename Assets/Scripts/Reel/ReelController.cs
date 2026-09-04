@@ -60,6 +60,7 @@ public class ReelController : MonoBehaviour
 
         isSpinning = true;
 
+        // Normal spinning
         float elapsed = 0f;
 
         while (elapsed < spinDuration)
@@ -71,6 +72,7 @@ public class ReelController : MonoBehaviour
             yield return null;
         }
 
+        // Find target
         RectTransform target = FindTarget(targetSymbol);
 
         if (target != null)
@@ -88,6 +90,7 @@ public class ReelController : MonoBehaviour
                 distanceToCenter +
                 ReelHeight * extraRotations;
 
+            // Smooth stop
             yield return StartCoroutine(
                 SmoothStop(totalDistance)
             );
