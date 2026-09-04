@@ -42,10 +42,10 @@ public class SlotGameManager : MonoBehaviour
 
         spinButton.onClick.AddListener(Spin);
 
-        UpdateUI();
-
         resultText.text = "READY!";
         payoutText.text = "";
+
+        UpdateUI();
     }
 
     public void Spin()
@@ -68,12 +68,17 @@ public class SlotGameManager : MonoBehaviour
         isSpinning = true;
         spinButton.interactable = false;
 
+        // Stop previous win effects
+        reel1.StopWinEffect();
+        reel2.StopWinEffect();
+        reel3.StopWinEffect();
+
         // Pay for spin
         coins -= spinCost;
 
         UpdateUI();
 
-        // Generate results
+        // Generate random results
         result1 = slotRNG.GenerateSymbol();
         result2 = slotRNG.GenerateSymbol();
         result3 = slotRNG.GenerateSymbol();
@@ -85,24 +90,26 @@ public class SlotGameManager : MonoBehaviour
         resultText.text = "SPINNING...";
         payoutText.text = "";
 
-        // Start reels
+        // Start Reel 1
         StartCoroutine(
             reel1.SpinToResult(result1)
         );
 
         yield return new WaitForSeconds(0.15f);
 
+        // Start Reel 2
         StartCoroutine(
             reel2.SpinToResult(result2)
         );
 
         yield return new WaitForSeconds(0.15f);
 
+        // Start Reel 3
         StartCoroutine(
             reel3.SpinToResult(result3)
         );
 
-        // Wait for all reels
+        // Wait for all reels to stop
         while (
             reel1.IsSpinning ||
             reel2.IsSpinning ||
@@ -124,7 +131,7 @@ public class SlotGameManager : MonoBehaviour
     private void CheckResult()
     {
         // ==========================================
-        // THREE MATCH
+        // JACKPOT - ALL THREE MATCH
         // ==========================================
 
         if (
@@ -140,15 +147,20 @@ public class SlotGameManager : MonoBehaviour
             payoutText.text =
                 "+" + payout + " COINS";
 
+            // Play winning animation
+            reel1.PlayWinEffect();
+            reel2.PlayWinEffect();
+            reel3.PlayWinEffect();
+
             Debug.Log(
-                $"JACKPOT! {result1} +{payout}"
+                $"JACKPOT! {result1} +{payout} coins"
             );
 
             return;
         }
 
         // ==========================================
-        // TWO MATCH
+        // SMALL WIN - TWO MATCH
         // ==========================================
 
         if (
@@ -165,17 +177,21 @@ public class SlotGameManager : MonoBehaviour
             payoutText.text =
                 "+" + payout + " COINS";
 
-            Debug.Log("SMALL WIN! +10");
+            Debug.Log("SMALL WIN! +10 coins");
 
             return;
         }
 
         // ==========================================
-        // NO MATCH
+        // LOSS
         // ==========================================
 
         resultText.text = "TRY AGAIN!";
         payoutText.text = "0 COINS";
+
+        Debug.Log(
+            $"TRY AGAIN: {result1} | {result2} | {result3}"
+        );
     }
 
     private int GetPayout(SymbolType symbol)
