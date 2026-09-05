@@ -16,6 +16,9 @@ public class SlotGameManager : MonoBehaviour
     [Header("Audio")]
     [SerializeField] private SlotAudioManager audioManager;
 
+    [Header("Lever")]
+    [SerializeField] private LeverController leverController;
+
     [Header("UI")]
     [SerializeField] private Button spinButton;
     [SerializeField] private TMP_Text resultText;
@@ -106,6 +109,14 @@ public class SlotGameManager : MonoBehaviour
         resultText.text = "SPINNING...";
         payoutText.text = "";
 
+        // Pull the lever
+        if (leverController != null)
+        {
+            yield return StartCoroutine(
+                leverController.PullLever()
+            );
+        }
+
         // Start reel spinning sound
         if (audioManager != null)
         {
@@ -174,12 +185,10 @@ public class SlotGameManager : MonoBehaviour
             payoutText.text =
                 "+" + payout + " COINS";
 
-            // Win animation
             reel1.PlayWinEffect();
             reel2.PlayWinEffect();
             reel3.PlayWinEffect();
 
-            // JACKPOT SOUND
             if (audioManager != null)
             {
                 audioManager.PlayJackpotSound();
@@ -208,7 +217,6 @@ public class SlotGameManager : MonoBehaviour
             payoutText.text =
                 "+" + payout + " COINS";
 
-            // SMALL WIN SOUND
             if (audioManager != null)
             {
                 audioManager.PlaySmallWinSound();
@@ -226,7 +234,6 @@ public class SlotGameManager : MonoBehaviour
 
         payoutText.text = "0 COINS";
 
-        // LOSE SOUND
         if (audioManager != null)
         {
             audioManager.PlayLoseSound();
