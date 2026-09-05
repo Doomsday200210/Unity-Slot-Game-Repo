@@ -13,6 +13,9 @@ public class SlotGameManager : MonoBehaviour
     [Header("RNG")]
     [SerializeField] private SlotRNG slotRNG;
 
+    [Header("Audio")]
+    [SerializeField] private SlotAudioManager audioManager;
+
     [Header("UI")]
     [SerializeField] private Button spinButton;
     [SerializeField] private TMP_Text resultText;
@@ -58,6 +61,11 @@ public class SlotGameManager : MonoBehaviour
             resultText.text = "NOT ENOUGH COINS!";
             payoutText.text = "";
 
+            if (audioManager != null)
+            {
+                audioManager.PlayLoseSound();
+            }
+
             return;
         }
 
@@ -75,6 +83,12 @@ public class SlotGameManager : MonoBehaviour
         reel2.StopWinEffect();
         reel3.StopWinEffect();
 
+        // Play spin button sound
+        if (audioManager != null)
+        {
+            audioManager.PlaySpinButtonSound();
+        }
+
         // Pay for spin
         coins -= spinCost;
 
@@ -91,6 +105,12 @@ public class SlotGameManager : MonoBehaviour
 
         resultText.text = "SPINNING...";
         payoutText.text = "";
+
+        // Start reel spinning sound
+        if (audioManager != null)
+        {
+            audioManager.PlayReelSpinSound();
+        }
 
         // Start Reel 1
         StartCoroutine(
@@ -121,6 +141,12 @@ public class SlotGameManager : MonoBehaviour
             yield return null;
         }
 
+        // Stop reel spinning sound
+        if (audioManager != null)
+        {
+            audioManager.StopReelSpinSound();
+        }
+
         // Check result
         CheckResult();
 
@@ -133,10 +159,7 @@ public class SlotGameManager : MonoBehaviour
 
     private void CheckResult()
     {
-        // ==========================================
         // JACKPOT
-        // ==========================================
-
         if (
             result1 == result2 &&
             result2 == result3
@@ -156,6 +179,12 @@ public class SlotGameManager : MonoBehaviour
             reel2.PlayWinEffect();
             reel3.PlayWinEffect();
 
+            // JACKPOT SOUND
+            if (audioManager != null)
+            {
+                audioManager.PlayJackpotSound();
+            }
+
             Debug.Log(
                 $"JACKPOT! {result1} +{payout} coins"
             );
@@ -163,10 +192,7 @@ public class SlotGameManager : MonoBehaviour
             return;
         }
 
-        // ==========================================
         // SMALL WIN
-        // ==========================================
-
         if (
             result1 == result2 ||
             result2 == result3 ||
@@ -182,6 +208,12 @@ public class SlotGameManager : MonoBehaviour
             payoutText.text =
                 "+" + payout + " COINS";
 
+            // SMALL WIN SOUND
+            if (audioManager != null)
+            {
+                audioManager.PlaySmallWinSound();
+            }
+
             Debug.Log(
                 "SMALL WIN! +10 coins"
             );
@@ -189,18 +221,20 @@ public class SlotGameManager : MonoBehaviour
             return;
         }
 
-        // ==========================================
         // LOSS
-        // ==========================================
-
         resultText.text = "TRY AGAIN!";
 
         payoutText.text = "0 COINS";
 
+        // LOSE SOUND
+        if (audioManager != null)
+        {
+            audioManager.PlayLoseSound();
+        }
+
         Debug.Log(
             $"TRY AGAIN: {result1} | " +
-            $"{result2} | " +
-            $"{result3}"
+            $"{result2} | {result3}"
         );
     }
 
